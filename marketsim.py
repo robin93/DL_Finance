@@ -71,65 +71,65 @@ order_data.columns = ['Year','Month','Date','sym','action','Number_of_shares']
 list_of_symbols = order_data['sym'].unique()
 order_data['DateTime'] = order_data.apply(datetimefun,axis=1)
 order_data = order_data.sort(['DateTime'])
-
-
-"""Extract and format the prices data"""
-dt_timeofday = dt.timedelta(hours=16)
-dt_start = min(order_data['DateTime'])
-dt_end = max(order_data['DateTime'])
-ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt_timeofday)
-c_dataobj = da.DataAccess('Yahoo')
-ls_keys = ['close']
-ldf_data = (c_dataobj.get_data(ldt_timestamps,list_of_symbols, ls_keys))[0]
-
-"""Doing Calculations on the Order Data"""
-order_data['adjusted_price'] = order_data.apply(extract_actual_price,axis=1)
-order_data['delta_cash'] = order_data.apply(delta_cash,axis=1)
-order_data.loc[0, 'delta_cash'] = order_data.loc[0, 'delta_cash'] + opening_cash #initiate the cash balance
-order_data['cash_balance']  = order_data.delta_cash.cumsum()
-order_data.loc[0, 'delta_cash'] = order_data.loc[0, 'delta_cash'] - opening_cash
-for symbol in list_of_symbols:
-	order_data[symbol] = order_data.apply(CompanySharesDelta,axis=1)
-	order_data[symbol] = order_data[symbol].cumsum()
 print order_data
 
+# """Extract and format the prices data"""
+# dt_timeofday = dt.timedelta(hours=16)
+# dt_start = min(order_data['DateTime'])
+# dt_end = max(order_data['DateTime'])
+# ldt_timestamps = du.getNYSEdays(dt_start, dt_end, dt_timeofday)
+# c_dataobj = da.DataAccess('Yahoo')
+# ls_keys = ['close']
+# ldf_data = (c_dataobj.get_data(ldt_timestamps,list_of_symbols, ls_keys))[0]
 
-
-"""Extract the trading dates in the time range"""
-sym_data_ranges = pd.DataFrame(columns= ['sym','Min_Date','Max_Date'])
-df_index = 0
-for symbol in list_of_symbols:
-	sym_data_ranges.set_value(df_index,'sym',symbol)
-	subset = order_data[order_data['sym']==symbol]
-	sym_data_ranges.set_value(df_index,'Min_Date',min(subset['DateTime']))
-	sym_data_ranges.set_value(df_index,'Max_Date',max(subset['DateTime']))
-	df_index += 1
-# print sym_data_ranges
-
-
-
-"""Create and assign values in the values file"""
-values_data = pd.DataFrame(ldt_timestamps)
-values_data.columns = ['timestamps']
-values_data['cash'] = values_data.apply(getCashAmount,axis=1)
-for symbol in list_of_symbols:
- 	values_data[symbol] = values_data.apply(fetchShareNumbers,axis=1)
-values_data['HeldSharesValue'] = values_data.apply(HeldSharesValue,axis=1)
-values_data['Combined_worth'] = values_data['cash'] + values_data['HeldSharesValue']
-print values_data
+# """Doing Calculations on the Order Data"""
+# order_data['adjusted_price'] = order_data.apply(extract_actual_price,axis=1)
+# order_data['delta_cash'] = order_data.apply(delta_cash,axis=1)
+# order_data.loc[0, 'delta_cash'] = order_data.loc[0, 'delta_cash'] + opening_cash #initiate the cash balance
+# order_data['cash_balance']  = order_data.delta_cash.cumsum()
+# order_data.loc[0, 'delta_cash'] = order_data.loc[0, 'delta_cash'] - opening_cash
+# for symbol in list_of_symbols:
+# 	order_data[symbol] = order_data.apply(CompanySharesDelta,axis=1)
+# 	order_data[symbol] = order_data[symbol].cumsum()
+# print order_data
 
 
 
-##Evaluate the performance metrics
-daily_values = pd.Series(values_data['Combined_worth'])
-daily_returns = daily_values.pct_change(1)
-std_deviation = np.std(daily_returns)
-sharpe_ratio = np.sqrt(250)*np.mean(daily_returns)/std_deviation
-print "Average Daily Returns",np.mean(daily_returns)
-print "standard Deviation",std_deviation
-print 'sharpe ratio',sharpe_ratio
+# """Extract the trading dates in the time range"""
+# sym_data_ranges = pd.DataFrame(columns= ['sym','Min_Date','Max_Date'])
+# df_index = 0
+# for symbol in list_of_symbols:
+# 	sym_data_ranges.set_value(df_index,'sym',symbol)
+# 	subset = order_data[order_data['sym']==symbol]
+# 	sym_data_ranges.set_value(df_index,'Min_Date',min(subset['DateTime']))
+# 	sym_data_ranges.set_value(df_index,'Max_Date',max(subset['DateTime']))
+# 	df_index += 1
+# # print sym_data_ranges
 
-#plot the portfolio value with time during the year
-values_data.plot(x='timestamps',y='Combined_worth',kind = 'line')
-plt.xlabel('Time of Year');plt.ylabel('Portfolio value');plt.title('Plot of Portfolio Value with Time'),plt.grid(True)
-plt.show()
+
+
+# """Create and assign values in the values file"""
+# values_data = pd.DataFrame(ldt_timestamps)
+# values_data.columns = ['timestamps']
+# values_data['cash'] = values_data.apply(getCashAmount,axis=1)
+# for symbol in list_of_symbols:
+#  	values_data[symbol] = values_data.apply(fetchShareNumbers,axis=1)
+# values_data['HeldSharesValue'] = values_data.apply(HeldSharesValue,axis=1)
+# values_data['Combined_worth'] = values_data['cash'] + values_data['HeldSharesValue']
+# print values_data
+
+
+
+# ##Evaluate the performance metrics
+# daily_values = pd.Series(values_data['Combined_worth'])
+# daily_returns = daily_values.pct_change(1)
+# std_deviation = np.std(daily_returns)
+# sharpe_ratio = np.sqrt(250)*np.mean(daily_returns)/std_deviation
+# print "Average Daily Returns",np.mean(daily_returns)
+# print "standard Deviation",std_deviation
+# print 'sharpe ratio',sharpe_ratio
+
+# #plot the portfolio value with time during the year
+# values_data.plot(x='timestamps',y='Combined_worth',kind = 'line')
+# plt.xlabel('Time of Year');plt.ylabel('Portfolio value');plt.title('Plot of Portfolio Value with Time'),plt.grid(True)
+# plt.show()
