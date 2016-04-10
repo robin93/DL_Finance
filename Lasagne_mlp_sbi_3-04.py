@@ -13,16 +13,19 @@ from lasagne.updates import sgd, apply_momentum
 from lasagne.objectives import binary_crossentropy, aggregate
 
 from numpy import genfromtxt
-data = genfromtxt('SBI_processed_data.csv', delimiter=',',usecols=[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],skip_header=10)
+cols = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38]
+raw_data = genfromtxt('SBI_lag_TI_rise.csv', delimiter=',',usecols=cols,skip_header=20)
 
 #oversampling the data for class balancing
-unq,unq_idx = np.unique(data[:,-1],return_inverse=True)
+unq,unq_idx = np.unique(raw_data[:,-1],return_inverse=True)
 unq_cnt = np.bincount(unq_idx)
 cnt = np.max(unq_cnt)
-data = np.empty((cnt*len(unq),) + data.shape[1:],data.dtype)
+data = np.empty((cnt*len(unq),) + raw_data.shape[1:],raw_data.dtype)
 for j in xrange(len(unq)):
+    np.random.seed(20*j + 10)
     indices = np.random.choice(np.where(unq_idx==j)[0],cnt)
-    data[j*cnt:(j+1)*cnt]=data[indices]
+    data[j*cnt:(j+1)*cnt]=raw_data[indices]
+data = data[np.argsort(data[:,0])]
 
 
 def iterate_minibatches(inputs,targets,batch_size,shuffle=False):
@@ -37,12 +40,11 @@ def iterate_minibatches(inputs,targets,batch_size,shuffle=False):
             excerpt = slice(start_idx,start_idx+batch_size)
         yield inputs[excerpt],targets[excerpt]
 
-X_train, y_train,X_test, y_test = data[4000:9600,:16],data[4000:9600,16:],data[9600:,:16],data[9600:,16:]
-
+X_train, y_train,X_test, y_test = data[6000:9600,1:37],data[6000:9600,37:],data[9600:,1:37],data[9600:,37:]
 
 def build_mlp(input_var):
-    l_in = lasagne.layers.InputLayer((1,16),name='INPUT')
-    l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=100,name = 'Hidden1')
+    l_in = lasagne.layers.InputLayer((1,36),name='INPUT')
+    l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=200,name = 'Hidden1')
     # l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=30,nonlinearity=lasagne.nonlinearities.linear, name = 'Hidden1')
     # l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=50, name = 'Hidden2')
     l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.sigmoid, name = 'OUTPUT')
@@ -58,15 +60,15 @@ num_epochs=100
 network = build_mlp(input_var)
 
 prediction = lasagne.layers.get_output(network,input_var, deterministic = True)
-loss = lasagne.objectives.squared_error(prediction, target_var)
+loss = lasagne.objectives.binary_crossentropy(prediction, target_var)
 # loss = aggregate(loss, weights=3.2*target_var,mode='mean')
 loss = aggregate(loss,mode='mean')
 
 params = lasagne.layers.get_all_params(network, trainable=True)
-updates = lasagne.updates.sgd(loss, params, learning_rate=0.00001)
+updates = lasagne.updates.sgd(loss, params, learning_rate=0.05)
 
 test_prediction = lasagne.layers.get_output(network,input_var, deterministic=True)
-test_loss = lasagne.objectives.squared_error(test_prediction,target_var)
+test_loss = lasagne.objectives.binary_crossentropy(test_prediction,target_var)
 test_loss = test_loss.mean()
 # test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),dtype=theano.config.floatX)
 # test_acc = test_acc.mean()
@@ -76,11 +78,18 @@ val_fn = theano.function([input_var, target_var],test_loss)
 
 train_err = 0
 print("Starting training...")
+count = 0
+count_list,train_err_list = list(),list()
 for epoch in range(num_epochs):
-    for batch in iterate_minibatches(X_train,y_train,20,shuffle=True):
+    for batch in iterate_minibatches(X_train,y_train,30,shuffle=True):
         inputs,targets = batch
         train_err += train_fn(inputs,targets)
-    print "epoch number", epoch,"training error",train_err
+    count += 1
+    count_list.append(count)
+    train_err_list.append(train_err)
+    # print "batch count",count
+    print train_fn(inputs,targets)
+    # print "epoch number", epoch,"training error",train_err
 
 # for i in range(n_test_batches):
 #     # error,acc = val_fn(X_test[batch_size*i:batch_size*(i+1)],y_test[batch_size*i:batch_size*(i+1)])
@@ -121,7 +130,9 @@ print "percentiles", [np.percentile(prediction_list,10*i) for i in range(10)]
 # print "length of prediction list",len(prediction_list)
 # print "length of y_test",len(y_test_list)
 
+
 confusion_matrix_array = [0,0,0,0]
+print "unique count target values",np.bincount(y_test_list)
 for index in range(len(y_test_list)):
     if y_test_list[index]==0:
         if prediction_list[index]==0:
@@ -134,13 +145,23 @@ for index in range(len(y_test_list)):
         else:
             confusion_matrix_array[3] += 1
 
-print "Threshold value",threshold
-print "Target value = 1 & Prediction = 1 : ", confusion_matrix_array[1]
-print "Target value = 1 & Prediction = 0 : ", confusion_matrix_array[3]
-print "Target value = 0 & Prediction = 0 : ", confusion_matrix_array[0]
-print "Target value = 0 & Prediction = 1 : ", confusion_matrix_array[2]
+# print "Threshold value",threshold
+# print "Target value = 1 & Prediction = 1 : ", confusion_matrix_array[1]
+# print "Target value = 1 & Prediction = 0 : ", confusion_matrix_array[3]
+# print "Target value = 0 & Prediction = 0 : ", confusion_matrix_array[0]
+# print "Target value = 0 & Prediction = 1 : ", confusion_matrix_array[2]
 
+# print "unique count target values",np.bincount(y_test_list)
 
+from terminaltables import AsciiTable
+table_data = [
+    ["Target Values","Prediction = 1","Prediction = 0"],
+    ["Target Values = 1",str(confusion_matrix_array[1]),str(confusion_matrix_array[3])],
+    ["Target Values = 0",str(confusion_matrix_array[2]),str(confusion_matrix_array[0])]
+]
+
+table = AsciiTable(table_data)
+print table.table
 
 
 # for batch in iterate_minibatches(X_test, y_test, 20, shuffle=False):
