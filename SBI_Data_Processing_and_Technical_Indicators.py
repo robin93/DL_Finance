@@ -178,19 +178,17 @@ def MeanDeviation(price, d):
 data_subset['CCI'] = CCI(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],20,20)
 
 # Chaikin Oscillator
-# def Chaikin(price, high, low, volume):
-#     MoneyFlowMultiplier = ((price - low) - (high - low))/ (high - low)
-#     MoneyFlowVolume = MoneyFlowMultiplier * volume
-#     ADL = price.copy()
-#     for i in range(1,len(price)):
-#         if i == 1:
-#             ADL[i] = MoneyFlowVolume[i]
-#         else:
-#             ADL[i] = ADL[i-1] + MoneyFlowVolume[i]
-#     Chaikin = ewma(ADL,3) - ewma(ADL,10)
-#     return Chaikin
+def Chaikin(price, high, low, volume):
+    MoneyFlowMultiplier = ((price - low) - (high - low))/ (high - low)
+    MoneyFlowVolume = MoneyFlowMultiplier * volume
+    ADL = price.copy()
+    ADL[0] = 0
+    for i in range(1,len(price)):
+        ADL[i] = ADL[i-1] + MoneyFlowVolume[i] 
+    Chaikin = ewma(ADL,3) - ewma(ADL,10)
+    return Chaikin
 
-# data_subset['Chaikin'] = Chaikin(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],data_subset['VOLUME'])
+data_subset['Chaikin'] = Chaikin(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],data_subset['VOLUME'])
 
 # Disparity Index (10)
 def DisparityIndex(price,n) :
