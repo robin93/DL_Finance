@@ -184,11 +184,11 @@ def Chaikin(price, high, low, volume):
     ADL = price.copy()
     ADL[0] = 0
     for i in range(1,len(price)):
-        ADL[i] = ADL[i-1] + MoneyFlowVolume[i] 
+        ADL[i] = ADL[i-1] + MoneyFlowVolume.values[i] 
     Chaikin = ewma(ADL,3) - ewma(ADL,10)
     return Chaikin
 
-# data_subset['Chaikin'] = Chaikin(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],data_subset['VOLUME'])
+data_subset['Chaikin'] = Chaikin(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],data_subset['VOLUME'])
 
 # Disparity Index (10)
 def DisparityIndex(price,n) :
@@ -216,7 +216,7 @@ data_subset['Volatility(10)'] = volatility(data_subset['LAST'],10)
 print data_subset.tail(10)
 # raw_data.drop(['CHG_PCT_1D'],inplace=True,axis=1)
 # cols_to_norm = ['LAST', 'LAST_lag1', 'LAST_lag2', 'LAST_lag3', 'VOLUME', 'VOLUME_lag1', 'VOLUME_lag2', 'VOLUME_lag3', 'HIGH', 'HIGH_lag1', 'HIGH_lag2', 'HIGH_lag3', 'LOW', 'LOW_lag1', 'LOW_lag2', 'LOW_lag3','MA(5)', 'MA(20)', 'EWMA(20)', 'MACD', 'SIGNAL', 'Histogram', 'RSI(14)', 'BolBandUpper', 'BolBandLower','FastStochastic(k%)','FastStochastic(d%)','SlowStochastic(d%)','Momentum(7)','RateOfChange(7)','MovingVariance','CCI','Chaikin','DisparityIndex(10)','WilliamR(10)','Volatility(20)','Volatility(10)']
-cols_to_norm = ['LAST', 'LAST_lag1', 'LAST_lag2', 'LAST_lag3', 'VOLUME', 'VOLUME_lag1', 'VOLUME_lag2', 'VOLUME_lag3', 'HIGH', 'HIGH_lag1', 'HIGH_lag2', 'HIGH_lag3', 'LOW', 'LOW_lag1', 'LOW_lag2', 'LOW_lag3','MA(5)', 'MA(20)', 'EWMA(20)', 'MACD', 'SIGNAL', 'Histogram', 'RSI(14)', 'BolBandUpper', 'BolBandLower','FastStochastic(k%)','FastStochastic(d%)','SlowStochastic(d%)','Momentum(7)','RateOfChange(7)','MovingVariance','CCI','DisparityIndex(10)','WilliamR(10)','Volatility(20)','Volatility(10)']
+cols_to_norm = ['LAST', 'LAST_lag1', 'LAST_lag2', 'LAST_lag3', 'VOLUME', 'VOLUME_lag1', 'VOLUME_lag2', 'VOLUME_lag3', 'HIGH', 'HIGH_lag1', 'HIGH_lag2', 'HIGH_lag3', 'LOW', 'LOW_lag1', 'LOW_lag2', 'LOW_lag3','MA(5)', 'MA(20)', 'EWMA(20)', 'MACD', 'SIGNAL', 'Histogram', 'RSI(14)', 'BolBandUpper', 'BolBandLower','FastStochastic(k%)','FastStochastic(d%)','SlowStochastic(d%)','Momentum(7)','RateOfChange(7)','MovingVariance','CCI','Chaikin','DisparityIndex(10)','WilliamR(10)','Volatility(20)','Volatility(10)']
 data_subset[cols_to_norm] = data_subset[cols_to_norm].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
 # # print data_subset.head(10)
 # # print data_subset.tail(10)

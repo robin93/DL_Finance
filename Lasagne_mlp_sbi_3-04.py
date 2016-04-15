@@ -1,5 +1,6 @@
 import sys,os,time,theano,lasagne
 import numpy as np
+import matplotlib.pyplot as plt
 import theano.tensor as T
 from lasagne.init import Constant
 theano.config.optimizer='fast_compile'
@@ -13,8 +14,8 @@ from lasagne.updates import sgd, apply_momentum
 from lasagne.objectives import binary_crossentropy, aggregate
 
 from numpy import genfromtxt
-cols = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38]
-raw_data = genfromtxt('SBI_lag_TI_rise.csv', delimiter=',',usecols=cols,skip_header=20)
+cols = [i for i in range(1,39)]
+raw_data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=cols,skip_header=20)
 
 #oversampling the data for class balancing
 unq,unq_idx = np.unique(raw_data[:,-1],return_inverse=True)
@@ -28,7 +29,7 @@ for j in xrange(len(unq)):
 data = data[np.argsort(data[:,0])]
 
 
-def iterate_minibatches(inputs,targets,batch_size,shuffle=False):
+def iterate_minibatches(inputs,targets,batch_size,shuffle=True):
     assert len(inputs)==len(targets)
     if shuffle:
         indices = np.arange(len(inputs))
@@ -40,13 +41,13 @@ def iterate_minibatches(inputs,targets,batch_size,shuffle=False):
             excerpt = slice(start_idx,start_idx+batch_size)
         yield inputs[excerpt],targets[excerpt]
 
-X_train, y_train,X_test, y_test = data[6000:9600,1:37],data[6000:9600,37:],data[9600:,1:37],data[9600:,37:]
+X_train, y_train,X_test, y_test = data[6000:9600,1:38],data[6000:9600,38:39],data[9600:,1:38],data[9600:,38:39]
 
 def build_mlp(input_var):
     l_in = lasagne.layers.InputLayer((1,36),name='INPUT')
     l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=200,name = 'Hidden1')
     # l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=30,nonlinearity=lasagne.nonlinearities.linear, name = 'Hidden1')
-    # l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=50, name = 'Hidden2')
+    l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=200, name = 'Hidden2')
     l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.sigmoid, name = 'OUTPUT')
     # l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.leaky_rectify, name = 'OUTPUT')
     # l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.leaky_rectify, name = 'OUTPUT')
@@ -55,7 +56,7 @@ def build_mlp(input_var):
 input_var = T.matrix('inputs')
 target_var = T.matrix('targets')
 
-num_epochs=100
+num_epochs=300
 
 network = build_mlp(input_var)
 
@@ -81,14 +82,15 @@ print("Starting training...")
 count = 0
 count_list,train_err_list = list(),list()
 for epoch in range(num_epochs):
-    for batch in iterate_minibatches(X_train,y_train,30,shuffle=True):
+    for batch in iterate_minibatches(X_train,y_train,50,shuffle=True):
         inputs,targets = batch
-        train_err += train_fn(inputs,targets)
+        batch_error = train_fn(inputs,targets)
+        train_err += batch_error
     count += 1
     count_list.append(count)
-    train_err_list.append(train_err)
+    train_err_list.append(batch_error)
     # print "batch count",count
-    print train_fn(inputs,targets)
+    print batch_error
     # print "epoch number", epoch,"training error",train_err
 
 # for i in range(n_test_batches):
@@ -163,6 +165,8 @@ table_data = [
 table = AsciiTable(table_data)
 print table.table
 
+plt.plot([i for i in range(0,num_epochs)],train_err_list)
+plt.show()
 
 # for batch in iterate_minibatches(X_test, y_test, 20, shuffle=False):
 #     inputs, targets = batch
