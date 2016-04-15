@@ -14,8 +14,10 @@ from lasagne.updates import sgd, apply_momentum
 from lasagne.objectives import binary_crossentropy, aggregate
 
 from numpy import genfromtxt
-cols = [i for i in range(1,39)]
+cols = [i for i in range(1,40)]
 raw_data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=cols,skip_header=20)
+
+# print raw_data
 
 #oversampling the data for class balancing
 unq,unq_idx = np.unique(raw_data[:,-1],return_inverse=True)
@@ -41,10 +43,13 @@ def iterate_minibatches(inputs,targets,batch_size,shuffle=True):
             excerpt = slice(start_idx,start_idx+batch_size)
         yield inputs[excerpt],targets[excerpt]
 
-X_train, y_train,X_test, y_test = data[6000:9600,1:38],data[6000:9600,38:39],data[9600:,1:38],data[9600:,38:39]
+X_train, y_train,X_test, y_test = data[6000:9600,1:38],data[6000:9600,38:],data[9600:,1:38],data[9600:,38:]
+
+# print X_train
+# print y_train
 
 def build_mlp(input_var):
-    l_in = lasagne.layers.InputLayer((1,36),name='INPUT')
+    l_in = lasagne.layers.InputLayer((1,37),name='INPUT')
     l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=200,name = 'Hidden1')
     # l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=30,nonlinearity=lasagne.nonlinearities.linear, name = 'Hidden1')
     l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=200, name = 'Hidden2')
