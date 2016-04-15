@@ -188,7 +188,7 @@ def Chaikin(price, high, low, volume):
     Chaikin = ewma(ADL,3) - ewma(ADL,10)
     return Chaikin
 
-data_subset['Chaikin'] = Chaikin(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],data_subset['VOLUME'])
+# data_subset['Chaikin'] = Chaikin(data_subset['LAST'],data_subset['HIGH'],data_subset['LOW'],data_subset['VOLUME'])
 
 # Disparity Index (10)
 def DisparityIndex(price,n) :
@@ -221,9 +221,12 @@ data_subset[cols_to_norm] = data_subset[cols_to_norm].apply(lambda x: (x - x.min
 # # print data_subset.head(10)
 # # print data_subset.tail(10)
 
-data_subset['Significant_daily_price_rise'] = data_subset['CHG_PCT_1D'].apply(lambda row : 1 if (row>up_bound) else 0)
+# data_subset['Significant_daily_price_rise'] = data_subset['CHG_PCT_1D'].apply(lambda row : 1 if (row>up_bound) else 0)
+data_subset['Significant_daily_price_rise_shift'] = data_subset['CHG_PCT_1D'].apply(lambda row : 1 if (row>up_bound) else 0).shift(-1)
+data_subset['Significant_daily_price_fall_shift'] = data_subset['CHG_PCT_1D'].apply(lambda row : 1 if (row<lower_bound) else 0).shift(-1)
+data_subset = data_subset.fillna(method="ffill")
 data_subset.drop(['CHG_PCT_1D'],inplace=True,axis=1)
 
 print data_subset.tail(10)
 
-data_subset.to_csv('SBI_lag_TI_rise.csv',sep = ',',index=False)
+data_subset.to_csv('SBI_lag_TI_rise_fall.csv',sep = ',',index=False)
