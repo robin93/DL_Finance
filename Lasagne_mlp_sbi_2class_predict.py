@@ -68,9 +68,9 @@ X_train, y_train,X_test, y_test = data[9000:14500,1:38],data[9000:14500,38:],dat
 
 def build_mlp(input_var):
     l_in = lasagne.layers.InputLayer((1,37),name='INPUT')
-    l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=100,name = 'Hidden1')
+    l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=50,name = 'Hidden1')
     # l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=30,nonlinearity=lasagne.nonlinearities.linear, name = 'Hidden1')
-    l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=100, name = 'Hidden2')
+    l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=50, name = 'Hidden2')
     l_out = lasagne.layers.DenseLayer(l_hid1, num_units=2,nonlinearity=lasagne.nonlinearities.sigmoid, name = 'OUTPUT')
     # l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.leaky_rectify, name = 'OUTPUT')
     # l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.leaky_rectify, name = 'OUTPUT')
@@ -78,7 +78,7 @@ def build_mlp(input_var):
 
 input_var,target_var = T.matrix('inputs'),T.matrix('targets')
 
-num_epochs=600
+num_epochs=200
 
 network = build_mlp(input_var)
 
@@ -131,11 +131,15 @@ for epoch in range(num_epochs):
 # print "Test predictions outputs",test_prediction
 # print "parameter values",params
 
-# print "Last layer weights:"
-# print lasagne.layers.get_all_param_values(network)[-1]
-# print lasagne.layers.get_all_param_values(network)[-2]
-# print lasagne.layers.get_all_param_values(network)
-
+print "Last layer weights:"
+print "lasagne.layers.get_all_param_values(network)[-1]",lasagne.layers.get_all_param_values(network)[-1]
+print "shape",(lasagne.layers.get_all_param_values(network)[-1]).shape
+print "lasagne.layers.get_all_param_values(network)[-2]",lasagne.layers.get_all_param_values(network)[-2]
+print "shape",(lasagne.layers.get_all_param_values(network)[-2]).shape
+print "lasagne.layers.get_all_param_values(network)[-3]",lasagne.layers.get_all_param_values(network)[-3]
+print "shape",(lasagne.layers.get_all_param_values(network)[-3]).shape
+print "lasagne.layers.get_all_param_values(network)[-4]",lasagne.layers.get_all_param_values(network)[-4]
+print "shape",(lasagne.layers.get_all_param_values(network)[-4]).shape
 
 f_test = theano.function([input_var],test_prediction)
 # print list(f_test(X_test))
