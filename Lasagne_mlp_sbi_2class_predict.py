@@ -17,21 +17,6 @@ from numpy import genfromtxt
 cols = [i for i in range(1,41)]
 raw_data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=cols,skip_header=20)
 
-# print raw_data
-
-# '''oversampling the data for class balancing'''
-# unq,unq_idx = np.unique(raw_data[:,-1],return_inverse=True)
-# print "unq,unq_idx",unq,unq_idx
-# unq_cnt = np.bincount(unq_idx)
-# print "unq_cnt",unq_cnt
-# cnt = np.max(unq_cnt)
-# print "cnt",cnt
-# data = np.empty((cnt*len(unq),) + raw_data.shape[1:],raw_data.dtype)
-# for j in xrange(len(unq)):
-#     np.random.seed(20*j + 10)
-#     indices = np.random.choice(np.where(unq_idx==j)[0],cnt)
-#     data[j*cnt:(j+1)*cnt]=raw_data[indices]
-# data = data[np.argsort(data[:,0])]
 
 unq_rise,unq_idx_rise = np.unique(raw_data[:,-2],return_inverse=True)
 unq_dip,unq_idx_dip = np.unique(raw_data[:,-1],return_inverse=True)
@@ -66,21 +51,26 @@ X_train, y_train,X_test, y_test = data[9000:14500,1:38],data[9000:14500,38:],dat
 # print X_train
 # print y_train
 
+with np.load('model.npz') as f:
+    param_values = [f['arr_%d'%i] for i in range(len(f.files))]
+
 def build_mlp(input_var):
     l_in = lasagne.layers.InputLayer((1,37),name='INPUT')
     l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=50,name = 'Hidden1')
     # l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=30,nonlinearity=lasagne.nonlinearities.linear, name = 'Hidden1')
     l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=50, name = 'Hidden2')
-    l_out = lasagne.layers.DenseLayer(l_hid1, num_units=2,nonlinearity=lasagne.nonlinearities.sigmoid, name = 'OUTPUT')
+    l_out = lasagne.layers.DenseLayer(l_hid2, num_units=2,nonlinearity=lasagne.nonlinearities.sigmoid, name = 'OUTPUT')
     # l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.leaky_rectify, name = 'OUTPUT')
     # l_out = lasagne.layers.DenseLayer(l_hid1, num_units=1,nonlinearity=lasagne.nonlinearities.leaky_rectify, name = 'OUTPUT')
     return l_out
 
+
 input_var,target_var = T.matrix('inputs'),T.matrix('targets')
 
-num_epochs=200
+num_epochs=50
 
 network = build_mlp(input_var)
+lasagne.layers.set_all_param_values(network,param_values)
 
 prediction = lasagne.layers.get_output(network,input_var, deterministic = True)
 loss = lasagne.objectives.binary_crossentropy(prediction, target_var)
@@ -115,31 +105,21 @@ for epoch in range(num_epochs):
     print batch_error
     # print "epoch number", epoch,"training error",train_err
 
-# for i in range(n_test_batches):
-#     # error,acc = val_fn(X_test[batch_size*i:batch_size*(i+1)],y_test[batch_size*i:batch_size*(i+1)])
-#     error = val_fn(X_test[batch_size*i:batch_size*(i+1)],y_test[batch_size*i:batch_size*(i+1)])
-#     test_err += error
-#     # test_acc += acc
-# # print "Test error",test_err#,test_acc
-
-# test_err = 0
-# for batch in iterate_minibatches(X_test,y_test,100,shuffle=False):
-#         inputs,targets = batch
-#         test_err += val_fn(inputs,targets)
-#         print test_err
-
-# print "Test predictions outputs",test_prediction
-# print "parameter values",params
-
 print "Last layer weights:"
 print "lasagne.layers.get_all_param_values(network)[-1]",lasagne.layers.get_all_param_values(network)[-1]
 print "shape",(lasagne.layers.get_all_param_values(network)[-1]).shape
-print "lasagne.layers.get_all_param_values(network)[-2]",lasagne.layers.get_all_param_values(network)[-2]
+print "lasagne.layers.get_all_param_values(network)[-2]"#,lasagne.layers.get_all_param_values(network)[-2]
 print "shape",(lasagne.layers.get_all_param_values(network)[-2]).shape
-print "lasagne.layers.get_all_param_values(network)[-3]",lasagne.layers.get_all_param_values(network)[-3]
+print "lasagne.layers.get_all_param_values(network)[-3]"#,lasagne.layers.get_all_param_values(network)[-3]
 print "shape",(lasagne.layers.get_all_param_values(network)[-3]).shape
-print "lasagne.layers.get_all_param_values(network)[-4]",lasagne.layers.get_all_param_values(network)[-4]
+print "lasagne.layers.get_all_param_values(network)[-4]"#,lasagne.layers.get_all_param_values(network)[-4]
 print "shape",(lasagne.layers.get_all_param_values(network)[-4]).shape
+print "lasagne.layers.get_all_param_values(network)[-5]"#,lasagne.layers.get_all_param_values(network)[-3]
+print "shape",(lasagne.layers.get_all_param_values(network)[-5]).shape
+print "lasagne.layers.get_all_param_values(network)[-6]"#,lasagne.layers.get_all_param_values(network)[-4]
+print "shape",(lasagne.layers.get_all_param_values(network)[-6]).shape
+
+# np.savez('model.npz',*lasagne.layers.get_all_param_values(network))
 
 f_test = theano.function([input_var],test_prediction)
 # print list(f_test(X_test))
@@ -152,7 +132,7 @@ y_test_list_dip = [int(i[1]) for i in list(y_test)]
 
 
 
-print "percentiles", [np.percentile(prediction_list_rise,10*i) for i in range(10)]
+# print "percentiles", [np.percentile(prediction_list_rise,10*i) for i in range(10)]
 
 from sklearn.metrics import confusion_matrix
 from terminaltables import AsciiTable
@@ -176,14 +156,3 @@ print table_dip.table
 
 plt.plot([i for i in range(0,num_epochs)],train_err_list)
 plt.show()
-
-# for batch in iterate_minibatches(X_test, y_test, 20, shuffle=False):
-#     inputs, targets = batch
-#     err, acc = val_fn(inputs, targets)
-#     test_err += err
-#     test_acc += acc
-#     test_batches += 1
-# print("Final results:")
-# print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-# print("  test accuracy:\t\t{:.2f} %".format(
-#        test_acc / test_batches * 100))
