@@ -51,7 +51,9 @@ l_concat = lasagne.layers.ConcatLayer([l_forward, l_backward])
 l_out = lasagne.layers.DenseLayer(l_concat, num_units=1, nonlinearity=lasagne.nonlinearities.tanh)
 target_values = T.vector('target_output')
 network_output = lasagne.layers.get_output(l_out)
+print "network output",network_output
 predicted_values = network_output.flatten()
+print "predicted_values",predicted_values
 cost = T.mean((predicted_values - target_values)**2)
 all_params = lasagne.layers.get_all_params(l_out)
 print("Computing updates ...")
@@ -64,5 +66,41 @@ try:
         train(X,Y)
         cost_val = compute_cost(X_val,Y_val)
         print epoch,cost_val
+
+    f_test = theano.function([l_in.input_var],network_output.flatten())
+
+    # print list(f_test(X_test))
+
+    threshold = 0.01
+    prediction_list = [1 if i > threshold else 0 for i in list(f_test(X_val))]    
+
+
+    y_test_list = list()
+    for item in list(Y_val):
+        y_test_list.append(int(item))
+    # Confusion Matrix
+    confusion_matrix_array = [0,0,0,0]
+    #print "unique count target values",np.bincount(y_test_list)
+    for index in range(len(y_test_list)):
+        if y_test_list[index]==0:
+            if prediction_list[index]==0:
+                confusion_matrix_array[0] += 1
+            else:
+                confusion_matrix_array[2] += 1
+        else:
+            if prediction_list[index] == 1:
+                confusion_matrix_array[1] += 1
+            else:
+                confusion_matrix_array[3] += 1
+
+    from terminaltables import AsciiTable
+    table_data = [
+        ["Target Values","Prediction = 1","Prediction = 0"],
+        ["Target Values = 1",str(confusion_matrix_array[1]),str(confusion_matrix_array[3])],
+        ["Target Values = 0",str(confusion_matrix_array[2]),str(confusion_matrix_array[0])]
+        ]
+    table = AsciiTable(table_data)
+    print (table.table)
+
 except KeyboardInterrupt:
     pass
