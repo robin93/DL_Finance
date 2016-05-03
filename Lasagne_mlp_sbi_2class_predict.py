@@ -67,7 +67,7 @@ def build_mlp(input_var):
 
 input_var,target_var = T.matrix('inputs'),T.matrix('targets')
 
-num_epochs=50
+num_epochs=120
 
 network = build_mlp(input_var)
 lasagne.layers.set_all_param_values(network,param_values)
@@ -89,20 +89,20 @@ train_fn = theano.function([input_var, target_var],loss, updates=updates)
 # val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
 val_fn = theano.function([input_var, target_var],test_loss)
 
-train_err = 0
 print("Starting training...")
 count = 0
 count_list,train_err_list = list(),list()
 for epoch in range(num_epochs):
+    train_err = 0
     for batch in iterate_minibatches(X_train,y_train,50,shuffle=True):
         inputs,targets = batch
         batch_error = train_fn(inputs,targets)
         train_err += batch_error
     count += 1
     count_list.append(count)
-    train_err_list.append(batch_error)
+    train_err_list.append(train_err)
     # print "batch count",count
-    print batch_error
+    print train_err
     # print "epoch number", epoch,"training error",train_err
 
 print "Last layer weights:"
