@@ -10,37 +10,51 @@ from lasagne.layers import InputLayer, DenseLayer, get_output
 from lasagne.updates import sgd, apply_momentum
 from lasagne.objectives import binary_crossentropy, aggregate
 
+def iterate_minibatches(inputs,targets,batch_size,shuffle=True):
+    assert len(inputs)==len(targets)
+    if shuffle:
+        indices = np.arange(len(inputs))
+        np.random.shuffle(indices)
+    for start_idx in range(0,len(inputs)- batch_size+1,batch_size):
+        if shuffle:
+            excerpt = indices[start_idx:start_idx+batch_size]
+        else:
+            excerpt = slice(start_idx,start_idx+batch_size)
+        yield inputs[excerpt],targets[excerpt]
+
 from numpy import genfromtxt
-data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=[5,9,13,17,18,19,39],skip_header=4000)
+cols = [5,9,13,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
+data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=cols,skip_header=4000)
 number_of_batches = data.shape[0]-10 - 200
 X,Y = np.empty((number_of_batches,10,data.shape[1]-1)),np.empty((number_of_batches,))
 for i in range(10,data.shape[0]-200):
-    x = data[(i-10):i,0:6]
+    x = data[(i-10):i,0:25]
     X[i-10] = x
-    Y[i-10] = data[i-1,6]
+    Y[i-10] = data[i-1,25]
 
 number_of_batches_val = 200
 X_val,Y_val = np.empty((number_of_batches_val,10,data.shape[1]-1)),np.empty((number_of_batches_val,))
 for i in range(data.shape[0]-200,data.shape[0]):
-    x = data[(i-10):i,0:6]
+    x = data[(i-10):i,0:25]
     X_val[i-10-data.shape[0]+200] = x
-    Y_val[i-10-data.shape[0]+200] = data[i-1,6]
+    Y_val[i-10-data.shape[0]+200] = data[i-1,25]
+
 
 
 N_BATCH = X.shape[0]
 MAX_LENGTH = X.shape[1]
 N_FEATURES = X.shape[2]
 N_HIDDEN = 50
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.01
 EPOCH_SIZE = 10
-NUM_EPOCHS = 10
+NUM_EPOCHS = 30
 
 l_in = lasagne.layers.InputLayer(shape=(N_BATCH, MAX_LENGTH,N_FEATURES))
 l_forward = lasagne.layers.RecurrentLayer(
         l_in, N_HIDDEN,
         W_in_to_hid=lasagne.init.HeUniform(),
         W_hid_to_hid=lasagne.init.HeUniform(),
-        nonlinearity=lasagne.nonlinearities.tanh)
+        nonlinearity=lasagne.nonlinearities.tanh,only_return_final=True)
 l_backward = lasagne.layers.RecurrentLayer(
         l_in, N_HIDDEN,
         W_in_to_hid=lasagne.init.HeUniform(),
@@ -62,22 +76,30 @@ train = theano.function([l_in.input_var, target_values],cost, updates=updates)
 compute_cost = theano.function([l_in.input_var, target_values], cost)
 print "Training...."
 try:
+    count = 0
+    count_list,train_err_list = list(),list()
     for epoch in range(NUM_EPOCHS):
-        train(X,Y)
-        cost_val = compute_cost(X_val,Y_val)
-        print epoch,cost_val
+        train_err = 0
+        for batch in iterate_minibatches(X,Y,20,shuffle=True):
+            inputs,targets = batch
+            batch_error = train(inputs,targets)
+            train_err += batch_error
+        count += 1
+        count_list.append(count)
+        train_err_list.append(train_err)
+        print train_err
 
     f_test = theano.function([l_in.input_var],network_output.flatten())
 
-    # print list(f_test(X_test))
+    print "percentiles", [np.percentile(list(f_test(X_val)),10*i) for i in range(10)]
 
-    threshold = 0.01
-    prediction_list = [1 if i > threshold else 0 for i in list(f_test(X_val))]    
-
+    threshold = 0.05
+    prediction_list = [1 if i > threshold else 0 for i in list(f_test(X_val))]
 
     y_test_list = list()
     for item in list(Y_val):
         y_test_list.append(int(item))
+    print "y_test_list",y_test_list
     # Confusion Matrix
     confusion_matrix_array = [0,0,0,0]
     #print "unique count target values",np.bincount(y_test_list)
