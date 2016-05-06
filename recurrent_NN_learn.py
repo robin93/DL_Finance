@@ -25,27 +25,28 @@ def iterate_minibatches(inputs,targets,batch_size,shuffle=True):
 from numpy import genfromtxt
 cols = [5,9,13,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39]
 data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=cols,skip_header=4000)
-number_of_batches = data.shape[0]-10 - 200
-X,Y = np.empty((number_of_batches,10,data.shape[1]-1)),np.empty((number_of_batches,))
-for i in range(10,data.shape[0]-200):
-    x = data[(i-10):i,0:25]
-    X[i-10] = x
-    Y[i-10] = data[i-1,25]
+seq_len = 10
+number_of_batches = data.shape[0]-seq_len - 200
+X,Y = np.empty((number_of_batches,seq_len,data.shape[1]-1)),np.empty((number_of_batches,))
+for i in range(seq_len,data.shape[0]-200):
+    x = data[(i-seq_len):i,0:25]
+    X[i-seq_len] = x
+    Y[i-seq_len] = data[i-1,25]
 
 number_of_batches_val = 200
-X_val,Y_val = np.empty((number_of_batches_val,10,data.shape[1]-1)),np.empty((number_of_batches_val,))
+X_val,Y_val = np.empty((number_of_batches_val,seq_len,data.shape[1]-1)),np.empty((number_of_batches_val,))
 for i in range(data.shape[0]-200,data.shape[0]):
-    x = data[(i-10):i,0:25]
-    X_val[i-10-data.shape[0]+200] = x
-    Y_val[i-10-data.shape[0]+200] = data[i-1,25]
+    x = data[(i-seq_len):i,0:25]
+    X_val[i-seq_len-data.shape[0]+200] = x
+    Y_val[i-seq_len-data.shape[0]+200] = data[i-1,25]
 
 
 
 N_BATCH = X.shape[0]
-MAX_LENGTH = X.shape[1]
+MAX_LENGTH = seq_len
 N_FEATURES = X.shape[2]
 N_HIDDEN = 50
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.001
 EPOCH_SIZE = 10
 NUM_EPOCHS = 30
 
@@ -54,7 +55,7 @@ l_forward = lasagne.layers.RecurrentLayer(
         l_in, N_HIDDEN,
         W_in_to_hid=lasagne.init.HeUniform(),
         W_hid_to_hid=lasagne.init.HeUniform(),
-        nonlinearity=lasagne.nonlinearities.tanh,only_return_final=True)
+        nonlinearity=lasagne.nonlinearities.tanh)
 l_backward = lasagne.layers.RecurrentLayer(
         l_in, N_HIDDEN,
         W_in_to_hid=lasagne.init.HeUniform(),
@@ -69,6 +70,7 @@ print "network output",network_output
 predicted_values = network_output.flatten()
 print "predicted_values",predicted_values
 cost = T.mean((predicted_values - target_values)**2)
+# cost = lasagne.objectives.binary_crossentropy(predicted_values,target_values)
 all_params = lasagne.layers.get_all_params(l_out)
 print("Computing updates ...")
 updates = lasagne.updates.adagrad(cost, all_params, LEARNING_RATE)
