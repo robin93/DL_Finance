@@ -23,21 +23,17 @@ def iterate_minibatches(inputs,targets,batch_size,shuffle=True):
         yield inputs[excerpt],targets[excerpt]
 
 def cost_sensitive_weights(target_values,a,b):
-    weight_array = np.empty((target_values.shape[0],target_values.shape[1]),dtype=float)
-    # weight_array = np.empty((50,2),dtype=float)
+    weight_matrix = np.empty((target_values.shape[0],target_values.shape[1]),dtype=float)
     count = 0
     for i in target_values:
         if (i[0] == 1):
-            weight_array[count][0] = a
-            weight_array[count][1] = b
+            weight_array[count][0],weight_array[count][1] = a,b
         elif (i[1]==1):
-            weight_array[count][1] = a
-            weight_array[count][0] = b
+            weight_array[count][1],weight_array[count][0] = a,b
         else:
-            weight_array[count][0] = b
-            weight_array[count][1] = b
+            weight_array[count][0],weight_array[count][1] = b,b
         count += 1
-    return weight_array
+    return weight_matrix
 
 """import data and convert to numpy array, segment into train and test"""
 from numpy import genfromtxt
@@ -46,33 +42,34 @@ raw_data = genfromtxt('SBI_lag_TI_rise_fall.csv', delimiter=',',usecols=cols,ski
 data = raw_data
 
 print raw_data.shape
-X_train, y_train,X_test, y_test = data[3385:5385,1:38],data[3385:5385,38:],data[5385:,1:38],data[5385:,38:]
+X_test, y_test = data[5385:,1:38],data[5385:,38:]
+raw_data = data[3385:5385,:]
+# X_train, y_train,X_test, y_test = data[3385:5385,1:38],data[3385:5385,38:],data[5385:,1:38],data[5385:,38:]
 
-# """oversampling the train dataset to treat class imbalance"""
-# unq_rise,unq_idx_rise = np.unique(raw_data[:,-2],return_inverse=True)
-# unq_dip,unq_idx_dip = np.unique(raw_data[:,-1],return_inverse=True)
-# unq_cnt_rise,unq_cnt_dip = np.bincount(unq_idx_rise),np.bincount(unq_idx_dip)
-# cnt_rise_dip = np.max(unq_cnt_rise)-np.min(unq_cnt_dip)
-# data_rise_dip = np.empty((cnt_rise_dip*3,) + raw_data.shape[1:],raw_data.dtype)
-# intersectArray = np.intersect1d(np.where(unq_idx_dip==0)[0],np.where(unq_idx_rise==0)[0],assume_unique = True)
-# rise_indices = np.where(unq_idx_rise==1)[0]
-# dip_indices = np.where(unq_idx_dip==1)[0]
-# sampled_indices_0 = np.random.choice(intersectArray,cnt_rise_dip)
-# sampled_indices_rise = np.random.choice(rise_indices,cnt_rise_dip)
-# sampled_indices_dip = np.random.choice(dip_indices,cnt_rise_dip)
-# data_rise_dip[0:cnt_rise_dip] = raw_data[sampled_indices_0]
-# data_rise_dip[cnt_rise_dip:cnt_rise_dip*2] = raw_data[sampled_indices_rise]
-# data_rise_dip[cnt_rise_dip*2:cnt_rise_dip*3] = raw_data[sampled_indices_dip]
-# data = data_rise_dip[np.argsort(data_rise_dip[:,0])]
+"""oversampling the train dataset to treat class imbalance"""
+unq_rise,unq_idx_rise = np.unique(raw_data[:,-2],return_inverse=True)
+unq_dip,unq_idx_dip = np.unique(raw_data[:,-1],return_inverse=True)
+unq_cnt_rise,unq_cnt_dip = np.bincount(unq_idx_rise),np.bincount(unq_idx_dip)
+cnt_rise_dip = np.max(unq_cnt_rise)-np.min(unq_cnt_dip)
+data_rise_dip = np.empty((cnt_rise_dip*3,) + raw_data.shape[1:],raw_data.dtype)
+intersectArray = np.intersect1d(np.where(unq_idx_dip==0)[0],np.where(unq_idx_rise==0)[0],assume_unique = True)
+rise_indices = np.where(unq_idx_rise==1)[0]
+dip_indices = np.where(unq_idx_dip==1)[0]
+sampled_indices_0 = np.random.choice(intersectArray,cnt_rise_dip)
+sampled_indices_rise = np.random.choice(rise_indices,cnt_rise_dip)
+sampled_indices_dip = np.random.choice(dip_indices,cnt_rise_dip)
+data_rise_dip[0:cnt_rise_dip] = raw_data[sampled_indices_0]
+data_rise_dip[cnt_rise_dip:cnt_rise_dip*2] = raw_data[sampled_indices_rise]
+data_rise_dip[cnt_rise_dip*2:cnt_rise_dip*3] = raw_data[sampled_indices_dip]
+data = data_rise_dip[np.argsort(data_rise_dip[:,0])]
 
-
-# X_train, y_train,X_test, y_test = data[9000:14500,1:38],data[9000:14500,38:],data[14500:,1:38],data[14500:,38:]
+X_train, y_train = data[:,1:38],data[:,38:]
 
 
 
 """building the network"""
 def build_mlp(input_var):
-    l_in = lasagne.layers.InputLayer((1,37),name='INPUT')
+    l_in = lasagne.layers.InputLayer((None,37),name='INPUT')
     l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=50,name = 'Hidden1')
     # l_hid1 = lasagne.layers.DenseLayer(l_in, num_units=30,nonlinearity=lasagne.nonlinearities.linear, name = 'Hidden1')
     l_hid2 = lasagne.layers.DenseLayer(l_hid1, num_units=50, name = 'Hidden2')
@@ -85,20 +82,25 @@ def build_mlp(input_var):
 input_var,target_var = T.matrix('inputs'),T.matrix('targets')
 num_epochs=50
 network = build_mlp(input_var)
+
 """loading weight values from the previous model"""
-# """load layer parameters. To be used only when learning walk forward"""
+"""load layer parameters. To be used only when learning walk forward"""
 # with np.load('model.npz') as f:
 #     param_values = [f['arr_%d'%i] for i in range(len(f.files))]
 # lasagne.layers.set_all_param_values(network,param_values)
+
 prediction = lasagne.layers.get_output(network,input_var, deterministic = True)
 loss = lasagne.objectives.binary_crossentropy(prediction, target_var)
-# cost_sensitive_weights = [0.95 if i==1 else 0.05 for i in target_var]
-class_weights = np.empty((50,2),dtype=float)
-class_weights_global = class_weights
-# loss = aggregate(loss, weights=cost_sensitive_weights(target_var,0.5),mode='mean')
-# loss = aggregate(loss, weights=theano.shared(class_weights),mode='mean')
-loss = aggregate(loss, weights=theano.shared(class_weights_global),mode='normalized_sum')
-# loss = aggregate(loss,mode='mean')
+
+"""loss function aggregation only to be used when using cost sensitive training"""
+# class_weights = np.empty((50,2),dtype=float)
+# class_weights_global = class_weights
+# loss = aggregate(loss, weights=theano.shared(class_weights_global),mode='normalized_sum')
+
+"""loss function aggregation to be used without cost sensitive training"""
+loss = aggregate(loss,mode='mean')
+
+
 params = lasagne.layers.get_all_params(network, trainable=True)
 updates = lasagne.updates.sgd(loss, params, learning_rate=0.2)
 test_prediction = lasagne.layers.get_output(network,input_var, deterministic=True)
@@ -118,8 +120,7 @@ for epoch in range(num_epochs):
     train_err = 0
     for batch in iterate_minibatches(X_train,y_train,50,shuffle=True):
         inputs,targets = batch
-        class_weights = cost_sensitive_weights(targets,10,1)
-        # print class_weights
+        # class_weights = cost_sensitive_weights(targets,10,1) ##to be used when using cost sensitive training
         batch_error = train_fn(inputs,targets)
         train_err += batch_error
     count += 1
@@ -148,7 +149,7 @@ for epoch in range(num_epochs):
 f_test = theano.function([input_var],test_prediction)
 print list(f_test(X_test))
 
-threshold = 0.055
+threshold = 0.2
 prediction_list_rise = [1 if i[0] > threshold else 0 for i in list(f_test(X_test))]
 prediction_list_dip = [1 if i[1] > threshold else 0 for i in list(f_test(X_test))]
 y_test_list_rise = [int(i[0]) for i in list(y_test)]
