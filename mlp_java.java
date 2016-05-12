@@ -48,11 +48,11 @@ public class MLPClassifierLinear {
         int seed = 123;
         double learningRate = 0.1;
         int batchSize = 50;
-        int nEpochs = 10;
+        int nEpochs = 20;
 
         int numInputs = 37;
         int numOutputs = 2;
-        int numHiddenNodes = 40;
+        int numHiddenNodes = 100;
 
         //Load the training data:
         RecordReader rr = new CSVRecordReader();
@@ -64,63 +64,68 @@ public class MLPClassifierLinear {
         rrTest.initialize(new FileSplit(new File("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/Code/SBI_lag_TI_rise_fall_eval.csv")));
         DataSetIterator testIter = new RecordReaderDataSetIterator(rrTest,batchSize,37,2);
         
-//      //Load parameters from disk:
-        INDArray newParams;
-        try(DataInputStream dis = new DataInputStream(new FileInputStream("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/coefficients2.bin"))){
-            newParams = Nd4j.read(dis);
-        }
+////      //Load parameters from disk:
+//        INDArray newParams;
+//        try(DataInputStream dis = new DataInputStream(new FileInputStream("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/coefficients2.bin"))){
+//            newParams = Nd4j.read(dis);
+//        }
 
       //Load network configuration from disk:
-        MultiLayerConfiguration confFromJson = MultiLayerConfiguration.fromJson(FileUtils.readFileToString(new File("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/conf.json")));
+//        MultiLayerConfiguration confFromJson = MultiLayerConfiguration.fromJson(FileUtils.readFileToString(new File("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/conf.json")));
         
-//        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
-//                .seed(seed)
-//                .iterations(1)
-//                .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-//                .learningRate(learningRate)
-//                .updater(Updater.SGD)
-//                .list(2)  //number of hidden layers not including the input layer
-//                .layer(0, new DenseLayer.Builder().nIn(numInputs).nOut(numHiddenNodes)
-//                        .weightInit(WeightInit.NORMALIZED)
-//                        .activation("relu")
-//                        .build())
-//                .layer(1, new OutputLayer.Builder(LossFunction.NEGATIVELOGLIKELIHOOD)
-//                        .weightInit(WeightInit.NORMALIZED)
-//                        .activation("sigmoid").weightInit(WeightInit.NORMALIZED)
-//                        .nIn(numHiddenNodes).nOut(numOutputs).build())
-//                .pretrain(false).backprop(true).build();
+        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+                .seed(seed)
+                .iterations(1)
+                .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
+                .learningRate(learningRate)
+                .updater(Updater.SGD)
+                .list(2)  //number of hidden layers not including the input layer
+                .layer(0, new DenseLayer.Builder().nIn(numInputs).nOut(numHiddenNodes)
+                        .weightInit(WeightInit.NORMALIZED)
+                        .activation("relu")
+                        .build())
+                .layer(1, new OutputLayer.Builder(LossFunction.NEGATIVELOGLIKELIHOOD)
+                        .weightInit(WeightInit.NORMALIZED)
+                        .activation("sigmoid").weightInit(WeightInit.NORMALIZED)
+                        .nIn(numHiddenNodes).nOut(numOutputs).build())
+                .pretrain(false).backprop(true).build();
 
 
-        MultiLayerNetwork model = new MultiLayerNetwork(confFromJson);
+        MultiLayerNetwork model = new MultiLayerNetwork(conf);
         model.init();
-        model.setParameters(newParams);
+//        model.setParameters(newParams);
 //      model.setListeners(Collections.singletonList((IterationListener) new ScoreIterationListener()));
 
 
         for ( int n = 0; n < nEpochs; n++) {
             model.fit( trainIter );
             System.out.println("Epoch " + n + " complete"+"score"+model.score());
-        }
-
-        System.out.println("Evaluate model....");
-        Evaluation eval = new Evaluation(numOutputs);
-        while(testIter.hasNext()){
-            DataSet t = testIter.next();
-            INDArray features = t.getFeatureMatrix();
-            INDArray lables = t.getLabels();
-            INDArray predicted = model.output(features,false);
-
-            eval.eval(lables, predicted);
-
-        }
+            if (n%5==0){
+                model.fit(testIter);
+                System.out.println("Epoch " + n + " validation"+"score"+model.score());
+                }
+            }
+//        }
+        
+//        System.out.println("Evaluate model....");
+//        Evaluation eval = new Evaluation(numOutputs);
+//        while(testIter.hasNext()){
+//            DataSet t = testIter.next();
+//            INDArray features = t.getFeatureMatrix();
+//            INDArray lables = t.getLabels();
+//            INDArray predicted = model.output(features,false);
+//
+//            eval.eval(lables, predicted);
+//
+//        }
 
         //Print the evaluation statistics
-        System.out.println(eval.stats());
+//        System.out.println(eval.stats());
         
         //write the network parameters
         //http://deeplearning4j.org/modelpersistence
         try(DataOutputStream dos = new DataOutputStream(Files.newOutputStream(Paths.get("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/coefficients2.bin")))){
-        	Nd4j.write(model.params(),dos);
+            Nd4j.write(model.params(),dos);
         }
       //Write the network configuration:
         FileUtils.write(new File("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/conf.json"), model.getLayerWiseConfigurations().toJson());
