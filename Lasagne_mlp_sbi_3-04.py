@@ -89,6 +89,7 @@ count_list,train_err_list = list(),list()
 for epoch in range(num_epochs):
     for batch in iterate_minibatches(X_train,y_train,50,shuffle=True):
         inputs,targets = batch
+        print inputs.shape,targets.shape
         batch_error = train_fn(inputs,targets)
         train_err += batch_error
     count += 1
