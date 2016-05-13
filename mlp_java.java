@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
@@ -48,11 +49,11 @@ public class MLPClassifierLinear {
         int seed = 123;
         double learningRate = 0.1;
         int batchSize = 50;
-        int nEpochs = 20;
+        int nEpochs = 10;
 
         int numInputs = 37;
         int numOutputs = 2;
-        int numHiddenNodes = 100;
+        int numHiddenNodes = 50;
 
         //Load the training data:
         RecordReader rr = new CSVRecordReader();
@@ -79,14 +80,18 @@ public class MLPClassifierLinear {
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .learningRate(learningRate)
                 .updater(Updater.SGD)
-                .list(2)  //number of hidden layers not including the input layer
+                .list(2)  //number of hidden layers excluding only the input layer
                 .layer(0, new DenseLayer.Builder().nIn(numInputs).nOut(numHiddenNodes)
                         .weightInit(WeightInit.NORMALIZED)
                         .activation("relu")
                         .build())
+//                .layer(1, new DenseLayer.Builder().nIn(numHiddenNodes).nOut(numHiddenNodes)
+//                        .weightInit(WeightInit.NORMALIZED)
+//                        .activation("relu")
+//                        .build())
                 .layer(1, new OutputLayer.Builder(LossFunction.NEGATIVELOGLIKELIHOOD)
                         .weightInit(WeightInit.NORMALIZED)
-                        .activation("sigmoid").weightInit(WeightInit.NORMALIZED)
+                        .activation("softmax").weightInit(WeightInit.NORMALIZED)
                         .nIn(numHiddenNodes).nOut(numOutputs).build())
                 .pretrain(false).backprop(true).build();
 
@@ -99,38 +104,48 @@ public class MLPClassifierLinear {
 
         for ( int n = 0; n < nEpochs; n++) {
             model.fit( trainIter );
+            double train_score = model.score();
             System.out.println("Epoch " + n + " complete"+"score"+model.score());
-            if (n%5==0){
-                model.fit(testIter);
-                System.out.println("Epoch " + n + " validation"+"score"+model.score());
-                }
+//            if (n%5==0){
+//              model.fit(testIter);
+//              System.out.println("Epoch " + n + "train_score"+ train_score+"val_score"+model.score());
+//              }
             }
-//        }
         
-//        System.out.println("Evaluate model....");
-//        Evaluation eval = new Evaluation(numOutputs);
-//        while(testIter.hasNext()){
-//            DataSet t = testIter.next();
-//            INDArray features = t.getFeatureMatrix();
-//            INDArray lables = t.getLabels();
-//            INDArray predicted = model.output(features,false);
-//
-//            eval.eval(lables, predicted);
-//
-//        }
+        
+        System.out.println("Evaluate model....");
+        Evaluation eval = new Evaluation(numOutputs);
+        while(testIter.hasNext()){
+            DataSet t = testIter.next();
+            INDArray features = t.getFeatureMatrix();
+            INDArray lables = t.getLabels();
+            INDArray predicted = model.output(features,false);
+            System.out.println(predicted);
+            eval.eval(lables, predicted);
+
+        }
+        rrTest.reset();
+        int nTestPoints = 904;
+        DataSetIterator testIter_second = new RecordReaderDataSetIterator(rrTest,nTestPoints,37,2);
+        DataSet ds = testIter_second.next();
+        INDArray features_second = ds.getFeatureMatrix();
+        INDArray predicted_second = model.output(features_second,false);
+        System.out.println(predicted_second);
+        
+        
 
         //Print the evaluation statistics
-//        System.out.println(eval.stats());
+        System.out.println(eval.stats());
         
-        //write the network parameters
-        //http://deeplearning4j.org/modelpersistence
-        try(DataOutputStream dos = new DataOutputStream(Files.newOutputStream(Paths.get("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/coefficients2.bin")))){
-            Nd4j.write(model.params(),dos);
-        }
-      //Write the network configuration:
-        FileUtils.write(new File("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/conf.json"), model.getLayerWiseConfigurations().toJson());
-        
-        
+//        //write the network parameters
+//        //http://deeplearning4j.org/modelpersistence
+//        try(DataOutputStream dos = new DataOutputStream(Files.newOutputStream(Paths.get("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/coefficients2.bin")))){
+//          Nd4j.write(model.params(),dos);
+//        }
+//      //Write the network configuration:
+//        FileUtils.write(new File("/Users/ROBIN/Desktop/MS_and_I_Res/HQ/java_model/conf.json"), model.getLayerWiseConfigurations().toJson());
+//        
+//        
     }
 //
 //        //------------------------------------------------------------------------------------
