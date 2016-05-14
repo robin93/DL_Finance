@@ -120,7 +120,7 @@ public class MLPClassifierLinear {
             INDArray features = t.getFeatureMatrix();
             INDArray lables = t.getLabels();
             INDArray predicted = model.output(features,false);
-            System.out.println(predicted);
+//            System.out.println(predicted);
             eval.eval(lables, predicted);
 
         }
@@ -130,8 +130,18 @@ public class MLPClassifierLinear {
         DataSet ds = testIter_second.next();
         INDArray features_second = ds.getFeatureMatrix();
         INDArray predicted_second = model.output(features_second,false);
+//        INDArray prediction_value = model.predict(features_second);
         System.out.println(predicted_second);
         
+        rrTest.reset();
+        int nTestPoints_third = 1;
+        DataSetIterator testIter_third = new RecordReaderDataSetIterator(rrTest,nTestPoints_third,37,2);
+        while(testIter_third.hasNext()){
+        DataSet ds_predict = testIter_third.next();
+        INDArray features_third = ds_predict.getFeatureMatrix();
+        int[] prediction_value = model.predict(features_third);
+        System.out.println(prediction_value[0]);
+        }
         
 
         //Print the evaluation statistics
